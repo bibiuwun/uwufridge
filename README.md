@@ -8,8 +8,7 @@ Food item --
 	-total calories
 	-serving per container 
 	-serving size + calories + macros (protein, carb, fat)
-
-	-where you bought the item, for how much
+		where you bought the item, for how much
 
 Personal Recipe -- 
 	-total calories
