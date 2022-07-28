@@ -20,7 +20,7 @@ func NewServer(log logging.Interface, port string) *http.Server {
 	router.POST("/api/login", auth.Login)
 	router.POST("/api/logout", auth.Logout)
 	router.GET("/", RootHandler(log))
-	router.POST("/api/macro_split", PersonHandler)
+	router.POST("/api/macro_split", PersonHandler(log))
 	router.POST("/api/intake_lower", PersonIntakeLowerHandler)
 	router.POST("/api/intake_upper", PersonIntakeUpperHandler)
 
@@ -119,55 +119,61 @@ func PersonIntakeUpperHandler(w http.ResponseWriter, r *http.Request, ps httprou
 	})
 }
 
-func PersonHandler(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-	age, err := strconv.ParseInt(r.FormValue("age"), 10, 64)
-	if err != nil {
-		http.Error(w, "Invalid request", http.StatusBadRequest)
-		return
-	}
-	sex := r.FormValue("sex")
-	weight, err := strconv.ParseFloat(r.FormValue("weight"), 64)
-	if err != nil {
-		http.Error(w, "Invalid request", http.StatusBadRequest)
-		return
-	}
-	height, err := strconv.ParseFloat(r.FormValue("height"), 64)
-	if err != nil {
-		http.Error(w, "Invalid request", http.StatusBadRequest)
-		return
-	}
-	goal := r.FormValue("goal")
-	activity_level, err := strconv.ParseInt(r.FormValue("activity_level"), 10, 64)
+func PersonHandler(log logging.Interface) httprouter.Handle {
+	return func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+		age, err := strconv.ParseInt(r.FormValue("age"), 10, 64)
+		if err != nil {
+			http.Error(w, "Invalid request", http.StatusBadRequest)
+			log.WithError(err).Warn("Invalid request: Age")
+			return
+		}
+		sex := r.FormValue("sex")
+		weight, err := strconv.ParseFloat(r.FormValue("weight"), 64)
+		if err != nil {
+			http.Error(w, "Invalid request", http.StatusBadRequest)
+			log.WithError(err).Warn("Invalid request: Weight")
+			return
+		}
+		height, err := strconv.ParseFloat(r.FormValue("height"), 64)
+		if err != nil {
+			http.Error(w, "Invalid request", http.StatusBadRequest)
+			log.WithError(err).Warn("Invalid request: Height")
+			return
+		}
+		goal := r.FormValue("goal")
+		activity_level, err := strconv.ParseInt(r.FormValue("activity_level"), 10, 64)
+		if err != nil {
+			http.Error(w, "Invalid request", http.StatusBadRequest)
+			log.WithError(err).Warn("Invalid request: Activity level")
+			return
+		}
 
-	if err != nil {
-		http.Error(w, "Invalid request", http.StatusBadRequest)
-		return
+		p := &diet.Person{
+			Age:            age,
+			Sex:            diet.Gender(sex),
+			Weight:         weight,
+			Height:         height,
+			Goal:           diet.Goal(goal),
+			Activity_level: diet.ActivityLevel(activity_level),
+		}
+
+		calorie_per_day, err := strconv.ParseInt(r.FormValue("calorie_per_day"), 10, 64)
+		if err != nil {
+			http.Error(w, "Invalid request", http.StatusBadRequest)
+			log.WithError(err).Warn("Invalid request: Calorie per day")
+			return
+		}
+
+		carb, protein, fat := p.MacroSplit(calorie_per_day)
+
+		w.WriteHeader(http.StatusOK)
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"carb":    carb,
+			"protein": protein,
+			"fat":     fat,
+		})
 	}
-
-	p := &diet.Person{
-		Age:            age,
-		Sex:            diet.Gender(sex),
-		Weight:         weight,
-		Height:         height,
-		Goal:           diet.Goal(goal),
-		Activity_level: diet.ActivityLevel(activity_level),
-	}
-
-	calorie_per_day, err := strconv.ParseInt(r.FormValue("calorie_per_day"), 10, 64)
-	if err != nil {
-		http.Error(w, "Invalid request", http.StatusBadRequest)
-		return
-	}
-
-	carb, protein, fat := p.MacroSplit(calorie_per_day)
-
-	w.WriteHeader(http.StatusOK)
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
-		"carb":    carb,
-		"protein": protein,
-		"fat":     fat,
-	})
 }
 
 func RootHandler(log logging.Interface) httprouter.Handle {
