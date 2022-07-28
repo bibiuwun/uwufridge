@@ -1,6 +1,7 @@
 import Brightness4Icon from "@mui/icons-material/Brightness4";
 import Brightness7Icon from "@mui/icons-material/Brightness7";
 import LoginIcon from "@mui/icons-material/Login";
+import LogoutIcon from "@mui/icons-material/Logout";
 import {
   AppBar,
   IconButton,
@@ -12,7 +13,10 @@ import {
 import Head from "next/head";
 import Link from "next/link";
 import { NextRouter, withRouter } from "next/router";
-import React from "react";
+import React, { useCallback } from "react";
+import { logoutRequest } from "../../state/authentication/actions";
+import { useIsAuthenticated } from "../../state/authentication/hooks";
+import { useAppDispatch } from "../../state/hooks";
 
 interface Props {
   toggleColorMode: () => void;
@@ -21,6 +25,12 @@ interface Props {
 
 const Header: React.FC<Props> = (props: Props) => {
   const theme = useTheme();
+  const isAuthenticated = useIsAuthenticated();
+  const dispatch = useAppDispatch();
+
+  const handleLogoutUser = useCallback(() => {
+    dispatch(logoutRequest());
+  }, [dispatch]);
 
   return (
     <React.Fragment>
@@ -46,11 +56,19 @@ const Header: React.FC<Props> = (props: Props) => {
             </IconButton>
           </Tooltip>
           <IconButton color="inherit">
-            <Link href="/login">
-              <Tooltip title="Login">
-                <LoginIcon />
-              </Tooltip>
-            </Link>
+          {isAuthenticated ? (
+              <Link href="/login">
+                <Tooltip title="Logout">
+                  <LogoutIcon onClick={handleLogoutUser}/>
+                </Tooltip>
+              </Link>
+            ) : (
+              <Link href="/login">
+                <Tooltip title="Login">
+                  <LoginIcon />
+                </Tooltip>
+              </Link>
+            )}
           </IconButton>
         </Toolbar>
       </AppBar>
